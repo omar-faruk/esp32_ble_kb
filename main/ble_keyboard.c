@@ -40,18 +40,22 @@
 #include "hid_usage_mouse.h"
 
 #include "led_driver.h"
+#include "ota_manager.h"
+#include "esp_ota_ops.h"
 
 #define HID_DEMO_TAG "ESP_BLE"
-
-static const char *TAG = "ESP_HID_KB";
-
-static uint16_t hid_conn_id = 0;
-static bool sec_conn = false;
-static bool send_volum_up = false;
+#define HIDD_DEVICE_NAME "S3-TEST"
+#define OTA_VAL_LEN_MAX 256
 #define CHAR_DECLARATION_SIZE (sizeof(uint8_t))
 
 /* GPIO Pin number for quit from example logic */
 #define APP_QUIT_PIN GPIO_NUM_0
+
+static const char *TAG = "ESP_HID_KB";
+static uint16_t hid_conn_id = 0;
+static bool sec_conn = false;
+static bool send_volum_up = false;
+
 
 
 QueueHandle_t app_event_queue = NULL;
@@ -108,28 +112,16 @@ typedef struct
 
 static void hidd_event_callback(esp_hidd_cb_event_t event, esp_hidd_cb_param_t *param);
 
-#define HIDD_DEVICE_NAME "MK-887"
+
 
 static uint8_t hidd_service_uuid128[] = {
     /* LSB <--------------------------------------------------------------------------------> MSB */
     // first uuid, 16bit, [12],[13] is the value
-    0xfb,
-    0x34,
-    0x9b,
-    0x5f,
-    0x80,
-    0x00,
-    0x00,
-    0x80,
-    0x00,
-    0x10,
-    0x00,
-    0x00,
-    0x12,
-    0x18,
-    0x00,
-    0x00,
+    0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0x12, 0x18, 0x00, 0x00,
 };
+
+extern uint8_t ota_service_uuid[];
+
 
 static esp_ble_adv_data_t hidd_adv_data = {
     .set_scan_rsp = false,
@@ -158,6 +150,24 @@ static esp_ble_adv_params_t hidd_adv_params = {
     .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
 };
 
+static uint8_t ota_uuid[16] = {
+    /* LSB <--------------------------------------------------------------------------------> MSB */
+    0xd2, 0xd0, 0x52, 0x4f, 0xa4, 0x74, 0x43, 0xf3, 0x94, 0xb5, 0xb2, 0x97, 0xf3, 0x42, 0x97, 0x6f};
+
+static esp_ble_adv_data_t esp32_ble_scan_rsp_config = {
+    .set_scan_rsp = true,
+    .include_name = false,
+    .include_txpower = true,
+    .min_interval = 0x0006, // slave connection min interval, Time = min_interval * 1.25 msec
+    .max_interval = 0x0010, // slave connection max interval, Time = max_interval * 1.25 msec
+    .appearance = 0x00,   // Generic Device,
+    .manufacturer_len = 0,
+    .p_manufacturer_data = NULL,
+    .service_uuid_len = sizeof(ota_uuid),
+    .p_service_uuid = ota_uuid,
+    .flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT),
+};
+
 static void hidd_event_callback(esp_hidd_cb_event_t event, esp_hidd_cb_param_t *param)
 {
     switch (event)
@@ -169,6 +179,7 @@ static void hidd_event_callback(esp_hidd_cb_event_t event, esp_hidd_cb_param_t *
             // esp_bd_addr_t rand_addr = {0x04,0x11,0x11,0x11,0x11,0x05};
             esp_ble_gap_set_device_name(HIDD_DEVICE_NAME);
             esp_ble_gap_config_adv_data(&hidd_adv_data);
+            esp_ble_gap_config_adv_data(&esp32_ble_scan_rsp_config); // triggers ESP_GAP_BLE_SCAN_RSP_DATA_SET_COMPLETE_EVT
         }
         break;
     }
@@ -213,6 +224,8 @@ static void hidd_event_callback(esp_hidd_cb_event_t event, esp_hidd_cb_param_t *
 
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
+    ESP_LOGI(TAG, "GAP_EVT, event %d\n", event);
+
     switch (event)
     {
     case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:
@@ -669,6 +682,10 @@ void app_main(void)
     esp_ble_gap_register_callback(gap_event_handler);
     esp_hidd_register_callbacks(hidd_event_callback);
 
+    /* If your BLE device act as a Slave, the init_key means you hope which types of key of the master should distribute to you,
+    and the response key means which key you can distribute to the Master;
+    If your BLE device act as a master, the response key means you hope which types of key of the slave should distribute to you,
+    and the init key means which key you can distribute to the slave. */
     /* set the security iocap & auth_req & key size & init key response key parameters to the stack*/
     esp_ble_auth_req_t auth_req = ESP_LE_AUTH_BOND; // bonding with peer device after authentication
     esp_ble_io_cap_t iocap = ESP_IO_CAP_NONE;       // set the IO capability to No output No input
@@ -678,10 +695,6 @@ void app_main(void)
     esp_ble_gap_set_security_param(ESP_BLE_SM_AUTHEN_REQ_MODE, &auth_req, sizeof(uint8_t));
     esp_ble_gap_set_security_param(ESP_BLE_SM_IOCAP_MODE, &iocap, sizeof(uint8_t));
     esp_ble_gap_set_security_param(ESP_BLE_SM_MAX_KEY_SIZE, &key_size, sizeof(uint8_t));
-    /* If your BLE device act as a Slave, the init_key means you hope which types of key of the master should distribute to you,
-    and the response key means which key you can distribute to the Master;
-    If your BLE device act as a master, the response key means you hope which types of key of the slave should distribute to you,
-    and the init key means which key you can distribute to the slave. */
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_INIT_KEY, &init_key, sizeof(uint8_t));
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_RSP_KEY, &rsp_key, sizeof(uint8_t));
 
@@ -737,6 +750,8 @@ void app_main(void)
 
     // Create queue
     app_event_queue = xQueueCreate(10, sizeof(app_event_queue_t));
+    
+    xTaskCreate(&ota_manager, "ota_manager", 4096, NULL, 5, NULL);
 
     ESP_LOGI(TAG, "Waiting for HID Device to be connected");
 
