@@ -22,6 +22,9 @@ OTA_DONE =        bytearray.fromhex("04")
 OTA_DONE_ACK =    bytearray.fromhex("05")
 OTA_DONE_NAK =    bytearray.fromhex("06")
 
+
+OTA_PACKET_SIZE = 509    #mtu packet = 512 bytes = 3 bytes header + 253 bytes actual payload 
+
 #queue for data transfer
 queue = asyncio.Queue()
 
@@ -92,11 +95,10 @@ async def __ota_main__(file_path):
                 await client.start_notify(OTA_CONTROL_UUID,__ota_callback__)
 
                 #set data packet size
-                packet_size = 253        #mtu packet = 256 bytes = 3 bytes header + 253 bytes actual payload 
-                print("packet size for ble data transfer-"+str(packet_size))
+                print("packet size for ble data transfer-"+str(OTA_PACKET_SIZE))
 
                 #write packet size
-                await client.write_gatt_char(OTA_DATA_UUID,packet_size.to_bytes(2,"little"),True)
+                await client.write_gatt_char(OTA_DATA_UUID,OTA_PACKET_SIZE.to_bytes(2,"little"),True)
 
                 #send ota write request
                 await client.write_gatt_char(OTA_CONTROL_UUID,OTA_REQUEST)
@@ -108,7 +110,7 @@ async def __ota_main__(file_path):
                 if await queue.get() == "ack":
                     #get chunks of binary file ready to send
                     with open(file_path,'rb') as file:
-                        while packet_data:= file.read(packet_size):
+                        while packet_data:= file.read(OTA_PACKET_SIZE):
                             firmware_data.append(packet_data)
                     
 
