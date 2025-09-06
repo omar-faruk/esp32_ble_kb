@@ -5,7 +5,8 @@ import datetime
 import os
 
 #Advertised OTA Service UUID
-ADVERTISED_UUID  = ["6f9742f3-97b2-b594-f343-74a44f52d0d2"]     #OTA Service 
+ADVERTISED_UUID  = "6f9742f3-97b2-b594-f343-74a44f52d0d2"     #OTA Service 
+
 MANUF_ID = 0x02E5                     #Company Identifier from Bluetooth SIG Document
 MANUF_BYTES = 0x782184926910          #Base Mac Address of Device
 #characteristic uuids for ota service
@@ -35,12 +36,14 @@ async def __search_for_device__():
     discovered_devices_and_advertisement_data = await BleakScanner.discover(return_adv=True)
     for device, adv_dat in discovered_devices_and_advertisement_data.values():
         print("scanned device:"+str(device.address))
-        for key, value in adv_dat.manufacturer_data.items():  #manuf data = company id + base mac address
-            print("key: {}, Value: {}".format(key,value.hex()))
-            print("Service_uuid: {}".format(adv_dat.service_uuids))
-            if((key==MANUF_ID) & (adv_dat.service_uuids == ADVERTISED_UUID)): #filter with base mac addr and service uuid 
-                print("device found...................with address "+str(device.address) +" and uuid " + str(adv_dat.service_uuids))
+        appearence = adv_dat.platform_data[1].get("Appearance")
+        print("Service_uuids: {}".format(adv_dat.service_uuids))
+        for uuid in adv_dat.service_uuids:
+            if(ADVERTISED_UUID == uuid ): #service uuid 
+                print("device found..with address "+str(device.address) +" and uuid " + str(adv_dat.service_uuids))
                 server_device = device
+                break
+                
 
     
     assert server_device is not None, "device not found................................." 

@@ -44,7 +44,7 @@
 #include "esp_ota_ops.h"
 
 #define HID_DEMO_TAG "ESP_BLE"
-#define HIDD_DEVICE_NAME "S3-TEST"
+#define HIDD_DEVICE_NAME "S3-KB"
 #define OTA_VAL_LEN_MAX 256
 #define CHAR_DECLARATION_SIZE (sizeof(uint8_t))
 
@@ -65,6 +65,14 @@ typedef enum
     APP_EVENT = 0,
     APP_EVENT_HID_HOST
 } app_event_group_t;
+
+typedef struct {
+    uint8_t company_id[2];         //Espressif Semicoductors ID - 0x02E5
+    uint8_t mac_address[6];
+}manufacturer_data;
+
+manufacturer_data device_data = {.company_id = {0xE5,0x02}, .mac_address = {0}};
+static uint8_t custom_manufacturer_data[sizeof(device_data)];
 
 /**
  * @brief APP event queue
@@ -119,8 +127,10 @@ static uint8_t hidd_service_uuid128[] = {
     // first uuid, 16bit, [12],[13] is the value
     0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0x12, 0x18, 0x00, 0x00,
 };
-
-extern uint8_t ota_service_uuid[];
+static uint8_t ota_uuid[16] = {
+    /* LSB <--------------------------------------------------------------------------------> MSB */
+    0xd2, 0xd0, 0x52, 0x4f, 0xa4, 0x74, 0x43, 0xf3, 0x94, 0xb5, 0xb2, 0x97, 0xf3, 0x42, 0x97, 0x6f};
+    
 
 
 static esp_ble_adv_data_t hidd_adv_data = {
@@ -130,8 +140,8 @@ static esp_ble_adv_data_t hidd_adv_data = {
     .min_interval = 0x0006, // slave connection min interval, Time = min_interval * 1.25 msec
     .max_interval = 0x0010, // slave connection max interval, Time = max_interval * 1.25 msec
     .appearance = 0x03C1,   // HID Keyboard,
-    .manufacturer_len = 0,
-    .p_manufacturer_data = NULL,
+    .manufacturer_len = sizeof(custom_manufacturer_data),
+    .p_manufacturer_data = custom_manufacturer_data,
     .service_data_len = 0,
     .p_service_data = NULL,
     .service_uuid_len = sizeof(hidd_service_uuid128),
@@ -141,7 +151,7 @@ static esp_ble_adv_data_t hidd_adv_data = {
 
 static esp_ble_adv_params_t hidd_adv_params = {
     .adv_int_min = 0x20,
-    .adv_int_max = 0x30,
+    .adv_int_max = 0xA0,
     .adv_type = ADV_TYPE_IND,
     .own_addr_type = BLE_ADDR_TYPE_PUBLIC,
     //.peer_addr            =
@@ -150,16 +160,14 @@ static esp_ble_adv_params_t hidd_adv_params = {
     .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
 };
 
-static uint8_t ota_uuid[16] = {
-    /* LSB <--------------------------------------------------------------------------------> MSB */
-    0xd2, 0xd0, 0x52, 0x4f, 0xa4, 0x74, 0x43, 0xf3, 0x94, 0xb5, 0xb2, 0x97, 0xf3, 0x42, 0x97, 0x6f};
+
 
 static esp_ble_adv_data_t esp32_ble_scan_rsp_config = {
     .set_scan_rsp = true,
     .include_name = false,
     .include_txpower = true,
     .min_interval = 0x0006, // slave connection min interval, Time = min_interval * 1.25 msec
-    .max_interval = 0x0010, // slave connection max interval, Time = max_interval * 1.25 msec
+    .max_interval = 0x0020, // slave connection max interval, Time = max_interval * 1.25 msec
     .appearance = 0x00,   // Generic Device,
     .manufacturer_len = 0,
     .p_manufacturer_data = NULL,
@@ -300,54 +308,6 @@ static inline bool hid_keyboard_is_modifier_shift(uint8_t modifier)
     return false;
 }
 
-/**
- * @brief HID Keyboard get char symbol from key code
- *
- * @param[in] modifier  Keyboard modifier data
- * @param[in] key_code  Keyboard key code
- * @param[in] key_char  Pointer to key char data
- *
- * @return true  Key scancode converted successfully
- * @return false Key scancode unknown
- */
-static inline bool hid_keyboard_get_char(uint8_t modifier,
-                                         uint8_t key_code,
-                                         unsigned char *key_char)
-{
-    uint8_t mod = (hid_keyboard_is_modifier_shift(modifier)) ? 1 : 0;
-
-    if ((key_code >= HID_KEY_A) && (key_code <= HID_KEY_SLASH))
-    {
-        *key_char = keycode2ascii[key_code][mod];
-    }
-    else
-    {
-        // All other key pressed
-        return false;
-    }
-
-    return true;
-}
-
-/**
- * @brief HID Keyboard print char symbol
- *
- * @param[in] key_char  Keyboard char to stdout
- */
-static inline void hid_keyboard_print_char(unsigned int key_char)
-{
-    if (!!key_char)
-    {
-        putchar(key_char);
-#if (KEYBOARD_ENTER_LF_EXTEND)
-        if (KEYBOARD_ENTER_MAIN_CHAR == key_char)
-        {
-            putchar('\n');
-        }
-#endif // KEYBOARD_ENTER_LF_EXTEND
-        fflush(stdout);
-    }
-}
 
 /**
  * @brief Key buffer scan code search.
@@ -631,6 +591,8 @@ void app_main(void)
 
     // led_driver_init();
 
+    ESP_LOGI(HID_DEMO_TAG, "Initializiang KEYBOARD +  service...");
+
     // Initialize NVS.
     ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
@@ -688,13 +650,22 @@ void app_main(void)
     and the init key means which key you can distribute to the slave. */
     /* set the security iocap & auth_req & key size & init key response key parameters to the stack*/
     esp_ble_auth_req_t auth_req = ESP_LE_AUTH_BOND; // bonding with peer device after authentication
-    esp_ble_io_cap_t iocap = ESP_IO_CAP_NONE;       // set the IO capability to No output No input
+    esp_ble_io_cap_t iocap = ESP_IO_CAP_IO;       // set the IO capability to No output No input
     uint8_t key_size = 16;                          // the key size should be 7~16 bytes
     uint8_t init_key = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
     uint8_t rsp_key = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
+
+    uint32_t passkey = 123456;
+    uint8_t auth_option = ESP_BLE_ONLY_ACCEPT_SPECIFIED_AUTH_DISABLE;
+    uint8_t oob_support = ESP_BLE_OOB_DISABLE;
+
+    // esp_ble_gap_set_security_param(ESP_BLE_SM_SET_STATIC_PASSKEY, &passkey, sizeof(uint32_t));
     esp_ble_gap_set_security_param(ESP_BLE_SM_AUTHEN_REQ_MODE, &auth_req, sizeof(uint8_t));
     esp_ble_gap_set_security_param(ESP_BLE_SM_IOCAP_MODE, &iocap, sizeof(uint8_t));
     esp_ble_gap_set_security_param(ESP_BLE_SM_MAX_KEY_SIZE, &key_size, sizeof(uint8_t));
+    // esp_ble_gap_set_security_param(ESP_BLE_SM_ONLY_ACCEPT_SPECIFIED_SEC_AUTH, &auth_option, sizeof(uint8_t));
+    // esp_ble_gap_set_security_param(ESP_BLE_SM_OOB_SUPPORT, &oob_support, sizeof(uint8_t));
+
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_INIT_KEY, &init_key, sizeof(uint8_t));
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_RSP_KEY, &rsp_key, sizeof(uint8_t));
 

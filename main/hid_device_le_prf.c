@@ -9,14 +9,6 @@
 #include "esp_log.h"
 #include "ota_manager.h"
 
-/* @file  ota_manager.c
-   @brief this code involves ESP32 in BLE peripheral mode and as a GATT server,
-          with OTA service for firmware update.On selecting a .bin file by the client,
-          the particular file gets written in packets to the OTA partition currently
-          available on the device.
-   @author Avinashee Tech
-*/
-
 #include <stdio.h>
 #include <string.h>
 #include <sys/unistd.h>
@@ -46,7 +38,6 @@
 static const char *TAG = "Bluedroid-OTA";
 
 #define PROFILE_NUM 2      // Number of Application Profiles
-#define PROFILE_OTA_ID 0 // OTA Application Profile ID
 #define INFO_INST_ID 0     // Device Info service id
 #define OTA_INST_ID 1      // OTA service id
 #define ADV_CONFIG_FLAG (1 << 0)
@@ -54,7 +45,7 @@ static const char *TAG = "Bluedroid-OTA";
 
 /*macros*/
 #define GATTS_CHAR_VAL_LEN_MAX 100
-#define OTA_VAL_LEN_MAX 256
+#define OTA_VAL_LEN_MAX 512
 #define CHAR_DECLARATION_SIZE (sizeof(uint8_t))
 #define REBOOT_DEEP_SLEEP_TIMEOUT 1000
 #define REMOVE_BONDED_DEVICES_ON_RESET 1
@@ -86,29 +77,6 @@ static uint8_t ota_service_uuid[16] = {
     /* LSB <--------------------------------------------------------------------------------> MSB */
     0xd2, 0xd0, 0x52, 0x4f, 0xa4, 0x74, 0x43, 0xf3, 0x94, 0xb5, 0xb2, 0x97, 0xf3, 0x42, 0x97, 0x6f};
 
-typedef struct
-{
-    uint8_t company_id[2]; // Espressif Semicoductors ID - 0x02E5
-    uint8_t mac_address[6];
-} manufacturer_data;
-
-manufacturer_data device_data = {.company_id = {0xE5, 0x02}, .mac_address = {0}};
-static uint8_t custom_manufacturer_data[sizeof(device_data)];
-
-/*config primary adv data*/
-static esp_ble_adv_data_t esp32_ble_adv_config = {
-    .set_scan_rsp = false,
-    .include_name = true,
-    .include_txpower = true,
-    .min_interval = 0x0006, // slave connection min interval, Time = min_interval * 1.25 msec
-    .max_interval = 0x0010, // slave connection max interval, Time = max_interval * 1.25 msec
-    .appearance = 0x00,
-    .manufacturer_len = sizeof(custom_manufacturer_data),
-    .p_manufacturer_data = custom_manufacturer_data,
-    .service_data_len = 0,
-    .p_service_data = NULL,
-    .flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT),
-};
 
 /*config scan response data*/
 
@@ -339,10 +307,10 @@ enum
 
 #define HI_UINT16(a) (((a) >> 8) & 0xFF)
 #define LO_UINT16(a) ((a) & 0xFF)
+
 #define PROFILE_NUM            2
 
 #define PROFILE_APP_IDX        0
-#define PROFILE_OTA_ID         1 // OTA Application Profile ID
 
 struct gatts_profile_inst {
     esp_gatts_cb_t gatts_cb;
@@ -887,7 +855,7 @@ static struct gatts_profile_inst profile_tab[PROFILE_NUM] = {
         .gatts_cb = esp_hidd_prf_cb_hdl,
         .gatts_if = ESP_GATT_IF_NONE,       /* Not get the gatt_if, so initial is ESP_GATT_IF_NONE */
     },
-        [PROFILE_OTA_ID] = {
+        [OTA_APP_ID] = {
         // OTA Application Profile
         .gatts_cb = ota_profile_event_handler, // above declared profile handler function
         .gatts_if = ESP_GATT_IF_NONE,            // means that the Application Profile is not linked to any client yet
@@ -904,8 +872,14 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
 
         if (param->reg.status == ESP_GATT_OK)
         {   
-            profile_tab[PROFILE_APP_IDX].gatts_if = gatts_if;
-            profile_tab[PROFILE_OTA_ID].gatts_if = gatts_if;
+            if(param->reg.app_id == OTA_APP_ID)
+            {
+                profile_tab[OTA_APP_ID].gatts_if = gatts_if;
+            }
+            else{
+                profile_tab[PROFILE_APP_IDX].gatts_if = gatts_if;
+            }
+            
             
         }
         else
@@ -1377,7 +1351,7 @@ void ota_manager(void *)
             if (ota_ctrl_val == OTA_REQUEST)
             {
                 update_partition = esp_ota_get_next_update_partition(NULL);                        // get the next free OTA partition
-                err = esp_ota_begin(update_partition, OTA_WITH_SEQUENTIAL_WRITES, &update_handle); // start the ota update
+                err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &update_handle); // start the ota update
 
                 if (err != ESP_OK)
                 {
@@ -1426,6 +1400,10 @@ void ota_manager(void *)
                     {
                         ESP_LOGE(TAG, "esp_ota_set_boot_partition failed (%s)!",
                                  esp_err_to_name(err));
+                    }
+                    else
+                    {
+                        ESP_LOGI(TAG, "Successfully updated new boot_partition!");
                     }
                 }
 
