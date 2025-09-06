@@ -44,8 +44,9 @@
 #include "esp_ota_ops.h"
 
 #define HID_DEMO_TAG "ESP_BLE"
-#define HIDD_DEVICE_NAME "S3-KB"
-#define OTA_VAL_LEN_MAX 256
+
+#define HIDD_DEVICE_NAME "MK-887"
+
 #define CHAR_DECLARATION_SIZE (sizeof(uint8_t))
 
 /* GPIO Pin number for quit from example logic */
@@ -345,9 +346,9 @@ static void hid_host_keyboard_report_callback(const uint8_t *const data, const i
         return;
     }
 
-    ESP_LOGI(HID_DEMO_TAG, "Sending All Key Strokes: %c, %c,%c, %c, %c, %c, Modifier: %x", keycode2ascii[kb_report->key[0]][0],
+    ESP_LOGI(HID_DEMO_TAG, "Sending All Key Strokes: %x, %x,%x, %x, %x, %x, Modifier: %x, reserved :%x", keycode2ascii[kb_report->key[0]][0],
         keycode2ascii[kb_report->key[1]][0],keycode2ascii[kb_report->key[2]][0], keycode2ascii[kb_report->key[3]][0],
-        keycode2ascii[kb_report->key[4]][0],keycode2ascii[kb_report->key[5]][0], kb_report->modifier.val);
+        keycode2ascii[kb_report->key[4]][0],keycode2ascii[kb_report->key[5]][0], kb_report->modifier.val,kb_report->reserved);
         
     esp_hidd_send_keyboard_value(hid_conn_id, kb_report->modifier.val, kb_report->key, sizeof(kb_report->key));
 
