@@ -344,20 +344,23 @@ static void hid_host_keyboard_report_callback(const uint8_t *const data, const i
 
         switch (special_report->fn_id)
         {
-        case VOL_DOWN:
-        {
-            esp_hidd_send_consumer_value(hid_conn_id,HID_CONSUMER_VOLUME_DOWN,true);
-            break;
-        }
-        case VOL_UP:
-        {
-            esp_hidd_send_consumer_value(hid_conn_id,HID_CONSUMER_VOLUME_UP,true);
-            break;
-        }
-        
-        default:
-            esp_hidd_send_consumer_value(hid_conn_id,0,false);
-            break;
+            case VOL_DOWN:
+            {
+                esp_hidd_send_consumer_value(hid_conn_id,HID_CONSUMER_VOLUME_DOWN,true);
+                break;
+            }
+            case VOL_UP:
+            {
+                esp_hidd_send_consumer_value(hid_conn_id,HID_CONSUMER_VOLUME_UP,true);
+                break;
+            }
+            
+            default:
+            {
+                ESP_LOGI(TAG, "Media Control Default, hex: %x",special_report->fn_id);
+                esp_hidd_send_consumer_value(hid_conn_id,0,false);
+                break;
+            }
         }
 
         
