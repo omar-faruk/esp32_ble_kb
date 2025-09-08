@@ -15,7 +15,7 @@
 #include "esp_gap_ble_api.h"
 #include "hid_dev.h"
 
-#define SUPPORT_REPORT_VENDOR                 false
+#define SUPPORT_REPORT_VENDOR                 true
 //HID BLE profile log tag
 #define HID_LE_PRF_TAG                        "HID_LE_PRF"
 
