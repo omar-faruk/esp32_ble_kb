@@ -42,6 +42,7 @@
 #include "led_driver.h"
 #include "ota_manager.h"
 #include "esp_ota_ops.h"
+#include "network_logger.h"
 
 #define HID_DEMO_TAG "ESP_BLE"
 
@@ -291,23 +292,7 @@ static void hid_print_new_device_report_header(hid_protocol_t proto)
     }
 }
 
-/**
- * @brief HID Keyboard modifier verification for capitalization application (right or left shift)
- *
- * @param[in] modifier
- * @return true  Modifier was pressed (left or right shift)
- * @return false Modifier was not pressed (left or right shift)
- *
- */
-static inline bool hid_keyboard_is_modifier_shift(uint8_t modifier)
-{
-    if (((modifier & HID_LEFT_SHIFT) == HID_LEFT_SHIFT) ||
-        ((modifier & HID_RIGHT_SHIFT) == HID_RIGHT_SHIFT))
-    {
-        return true;
-    }
-    return false;
-}
+
 
 
 /**
@@ -354,36 +339,7 @@ static void hid_host_keyboard_report_callback(const uint8_t *const data, const i
 
 }
 
-/**
- * @brief USB HID Host Mouse Interface report callback handler
- *
- * @param[in] data    Pointer to input report data buffer
- * @param[in] length  Length of input report data buffer
- */
-static void hid_host_mouse_report_callback(const uint8_t *const data, const int length)
-{
-    hid_mouse_input_report_boot_t *mouse_report = (hid_mouse_input_report_boot_t *)data;
 
-    if (length < sizeof(hid_mouse_input_report_boot_t))
-    {
-        return;
-    }
-
-    static int x_pos = 0;
-    static int y_pos = 0;
-
-    // Calculate absolute position from displacement
-    x_pos += mouse_report->x_displacement;
-    y_pos += mouse_report->y_displacement;
-
-    hid_print_new_device_report_header(HID_PROTOCOL_MOUSE);
-
-    printf("X: %06d\tY: %06d\t|%c|%c|\r",
-           x_pos, y_pos,
-           (mouse_report->buttons.button1 ? 'o' : ' '),
-           (mouse_report->buttons.button2 ? 'o' : ' '));
-    fflush(stdout);
-}
 
 /**
  * @brief USB HID Host Generic Interface report callback handler
@@ -435,7 +391,7 @@ void hid_host_interface_callback(hid_host_device_handle_t hid_device_handle,
             }
             else if (HID_PROTOCOL_MOUSE == dev_params.proto)
             {
-                hid_host_mouse_report_callback(data, data_length);
+                //hid_host_mouse_report_callback(data, data_length);
             }
         }
         else
@@ -445,17 +401,14 @@ void hid_host_interface_callback(hid_host_device_handle_t hid_device_handle,
 
         break;
     case HID_HOST_INTERFACE_EVENT_DISCONNECTED:
-        ESP_LOGI(TAG, "HID Device, protocol '%s' DISCONNECTED",
-                 hid_proto_name_str[dev_params.proto]);
+        ESP_LOGI(TAG, "HID Device, protocol '%d' DISCONNECTED",dev_params.proto);
         ESP_ERROR_CHECK(hid_host_device_close(hid_device_handle));
         break;
     case HID_HOST_INTERFACE_EVENT_TRANSFER_ERROR:
-        ESP_LOGI(TAG, "HID Device, protocol '%s' TRANSFER_ERROR",
-                 hid_proto_name_str[dev_params.proto]);
+        ESP_LOGI(TAG, "HID Device, protocol '%d' TRANSFER_ERROR",dev_params.proto);
         break;
     default:
-        ESP_LOGE(TAG, "HID Device, protocol '%s' Unhandled event",
-                 hid_proto_name_str[dev_params.proto]);
+        ESP_LOGE(TAG, "HID Device, protocol '%d' Unhandled event",dev_params.proto);
         break;
     }
 }
@@ -477,7 +430,7 @@ void hid_host_device_event(hid_host_device_handle_t hid_device_handle,
     switch (event)
     {
     case HID_HOST_DRIVER_EVENT_CONNECTED:
-        ESP_LOGI(TAG, "HID Device, protocol '%s' CONNECTED", hid_proto_name_str[dev_params.proto]);
+        ESP_LOGI(TAG, "HID Device, protocol '%d' CONNECTED", dev_params.proto);
         // rgb_set(BLUE);
 
         const hid_host_device_config_t dev_config = {
@@ -639,6 +592,7 @@ void app_main(void)
         ESP_LOGE(HID_DEMO_TAG, "%s init bluedroid failed", __func__);
     }
 
+    network_logging_init();
     // rgb_set(RED);
 
     /// register the callback function to the gap module

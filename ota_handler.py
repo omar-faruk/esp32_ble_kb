@@ -39,17 +39,15 @@ async def __search_for_device__():
     discovered_devices_and_advertisement_data = await BleakScanner.discover(return_adv=True)
     for device, adv_dat in discovered_devices_and_advertisement_data.values():
         print("scanned device:"+str(device.address))
-        appearence = adv_dat.platform_data[1].get("Appearance")
-        print("Service_uuids: {}".format(adv_dat.service_uuids))
+        #print("Service_uuids: {}".format(adv_dat.service_uuids))
         for uuid in adv_dat.service_uuids:
-            if(ADVERTISED_UUID == uuid ): #service uuid 
+            if(ADVERTISED_UUID == uuid  and str(device.address) == "F4:12:FA:75:50:8A"): #service uuid 
                 print("device found..with address "+str(device.address) +" and uuid " + str(adv_dat.service_uuids))
                 server_device = device
                 break
                 
-
     
-    assert server_device is not None, "device not found................................." 
+    assert server_device is not None, "device not found........." 
 
     return server_device
 
@@ -62,16 +60,16 @@ async def __search_for_device__():
 async def __ota_callback__(sender:int,data:bytearray):
 
     if(data == OTA_REQUEST_ACK):
-        print("ota start successful. starting to send data.....................")
+        print("ota start successful. starting to send data.........")
         await queue.put("ack")
     elif(data == OTA_REQUEST_NAK):
-        print("ota start failed!!!!!!!!!!!!!!!!!!!!!")
+        print("ota start failed!!!!!")
         await queue.put("nak")
     elif(data == OTA_DONE_ACK):
-        print("ota completion successful.stopping now........................")
+        print("ota completion successful.stopping now")
         await queue.put("ack")
     elif(data == OTA_DONE_NAK):
-        print("ota completion failed!!!!!!!!!!!!!!!!!!!!")
+        print("ota completion failed!!!!")
         await queue.put("nak")
     else:
         print("sender:{} data:{}".format(sender,data))
@@ -134,12 +132,12 @@ async def __ota_main__(file_path):
 
                 #check if successfully ended
                 if await queue.get() == "ack":
-                    print("ota update successful.........................")
+                    print("ota update successful.")
                     end_time = datetime.datetime.now()
                     print("total update time:{}".format(end_time-begin_time))
 
                 else:
-                    print("ota update failed!!!!!!!!!!!!!!!!")
+                    print("ota update failed")
 
 
     except Exception as e:

@@ -1005,86 +1005,6 @@ static void hid_add_id_tbl(void)
 
 
 
-/*BLE security keys exchanged between devices for pairing/bonding*/
-static char *esp_key_type_to_str(esp_ble_key_type_t key_type)
-{
-    char *key_str = NULL;
-    switch (key_type)
-    {
-    case ESP_LE_KEY_NONE:
-        key_str = "ESP_LE_KEY_NONE";
-        break;
-    case ESP_LE_KEY_PENC: // Peer Encryption Key
-        key_str = "ESP_LE_KEY_PENC";
-        break;
-    case ESP_LE_KEY_PID: // Peer Identity Resolving Key
-        key_str = "ESP_LE_KEY_PID";
-        break;
-    case ESP_LE_KEY_PCSRK:
-        key_str = "ESP_LE_KEY_PCSRK";
-        break;
-    case ESP_LE_KEY_PLK:
-        key_str = "ESP_LE_KEY_PLK";
-        break;
-    case ESP_LE_KEY_LLK:
-        key_str = "ESP_LE_KEY_LLK";
-        break;
-    case ESP_LE_KEY_LENC: // Local Encryption Key
-        key_str = "ESP_LE_KEY_LENC";
-        break;
-    case ESP_LE_KEY_LID: // Local Identity Resolving Key
-        key_str = "ESP_LE_KEY_LID";
-        break;
-    case ESP_LE_KEY_LCSRK:
-        key_str = "ESP_LE_KEY_LCSRK";
-        break;
-    default:
-        key_str = "INVALID BLE KEY TYPE";
-        break;
-    }
-
-    return key_str;
-}
-
-/*BLE security authentication mode requested by device for connection with peer*/
-static char *esp_auth_req_to_str(esp_ble_auth_req_t auth_req)
-{
-    char *auth_str = NULL;
-    switch (auth_req)
-    {
-    case ESP_LE_AUTH_NO_BOND:
-        auth_str = "ESP_LE_AUTH_NO_BOND";
-        break;
-    case ESP_LE_AUTH_BOND:
-        auth_str = "ESP_LE_AUTH_BOND";
-        break;
-    case ESP_LE_AUTH_REQ_MITM:
-        auth_str = "ESP_LE_AUTH_REQ_MITM";
-        break;
-    case ESP_LE_AUTH_REQ_BOND_MITM:
-        auth_str = "ESP_LE_AUTH_REQ_BOND_MITM";
-        break;
-    case ESP_LE_AUTH_REQ_SC_ONLY:
-        auth_str = "ESP_LE_AUTH_REQ_SC_ONLY";
-        break;
-    case ESP_LE_AUTH_REQ_SC_BOND: // Secure connections and Bonding support
-        auth_str = "ESP_LE_AUTH_REQ_SC_BOND";
-        break;
-    case ESP_LE_AUTH_REQ_SC_MITM:
-        auth_str = "ESP_LE_AUTH_REQ_SC_MITM";
-        break;
-    case ESP_LE_AUTH_REQ_SC_MITM_BOND: // Secure connections, Man In The Middle protection, Bonding supported
-        auth_str = "ESP_LE_AUTH_REQ_SC_MITM_BOND";
-        break;
-    default:
-        auth_str = "INVALID BLE AUTH REQ";
-        break;
-    }
-
-    return auth_str;
-}
-
-
 
 /**
  * @brief GATT profile event handler(gets called for every individual profiles.....)
@@ -1268,7 +1188,7 @@ void vTimerCallback(TimerHandle_t xTimer)
         }
         else if (ota_app_state == ESP_OTA_IMG_VALID)
         {
-            ESP_LOGI(TAG, "running image already verified...........................");
+            ESP_LOGI(TAG, "running image already verified....");
         }
         else
         {
@@ -1296,16 +1216,16 @@ void ota_manager(void *)
     switch (app_partition->address)
     { // look into starting address of partition in flash
     case 0x10000:
-        ESP_LOGI(TAG, "running factory app..............................................");
+        ESP_LOGI(TAG, "running factory app");
         break;
     case 0x110000:
-        ESP_LOGI(TAG, "running ota_0 app................................................");
+        ESP_LOGI(TAG, "running ota_0 app..");
         break;
     case 0x210000:
-        ESP_LOGI(TAG, "running ota_1 app................................................");
+        ESP_LOGI(TAG, "running ota_1 app..");
         break;
     default:
-        ESP_LOGI(TAG, "running unknown app..............................................");
+        ESP_LOGI(TAG, "running unknown app");
         break;
     }
 
