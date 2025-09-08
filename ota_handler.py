@@ -7,8 +7,7 @@ import os
 #Advertised OTA Service UUID
 ADVERTISED_UUID  = "6f9742f3-97b2-b594-f343-74a44f52d0d2"     #OTA Service 
 
-MANUF_ID = 0x02E5                     #Company Identifier from Bluetooth SIG Document
-MANUF_BYTES = 0x782184926910          #Base Mac Address of Device
+KEYBOARD_BT_MAC = 0x782184926910          #BT Mac Address of Device
 #characteristic uuids for ota service
 OTA_DATA_UUID    = "0000ee02-0000-1000-8000-00805f9b34fb"  #OTA Data characteristic
 OTA_CONTROL_UUID = "0000ee01-0000-1000-8000-00805f9b34fb"  #OTA Control characteristic
@@ -41,7 +40,7 @@ async def __search_for_device__():
         print("scanned device:"+str(device.address))
         #print("Service_uuids: {}".format(adv_dat.service_uuids))
         for uuid in adv_dat.service_uuids:
-            if(ADVERTISED_UUID == uuid  and str(device.address) == "F4:12:FA:75:50:8A"): #service uuid 
+            if(ADVERTISED_UUID == uuid  and str(device.address) == KEYBOARD_BT_MAC): #service uuid 
                 print("device found..with address "+str(device.address) +" and uuid " + str(adv_dat.service_uuids))
                 server_device = device
                 break
