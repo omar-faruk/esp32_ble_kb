@@ -224,6 +224,7 @@ static void hidd_event_callback(esp_hidd_cb_event_t event, esp_hidd_cb_param_t *
     {
         ESP_LOGI(HID_DEMO_TAG, "ESP_HIDD_EVENT_BLE_LED_REPORT_WRITE_EVT");
         ESP_LOG_BUFFER_HEX(HID_DEMO_TAG, param->led_write.data, param->led_write.length);
+        // esp_bt_hid_host_send_data(param->led_write.data, param->led_write.length);
         break;
     }
     default:
@@ -326,14 +327,48 @@ static void hid_host_keyboard_report_callback(const uint8_t *const data, const i
 {
     hid_keyboard_input_report_boot_t *kb_report = (hid_keyboard_input_report_boot_t *)data;
 
+    char buffer[64];
+
+    memset(buffer,0,64);
+
     if (length < sizeof(hid_keyboard_input_report_boot_t))
     {
+        
+        for (size_t i = 0; i < length; i++)
+        {
+            sprintf(buffer + i*2, "%02X", data[i]);  // uppercase hex
+        }
+        ESP_LOGI(TAG, "Non Boot Protocol, length is %d, hex: %s",length,buffer);
+        
+        hid_special_input_t *special_report = (hid_special_input_t *)data;
+
+        switch (special_report->fn_id)
+        {
+        case VOL_DOWN:
+        {
+            esp_hidd_send_consumer_value(hid_conn_id,HID_CONSUMER_VOLUME_DOWN,true);
+            break;
+        }
+        case VOL_UP:
+        {
+            esp_hidd_send_consumer_value(hid_conn_id,HID_CONSUMER_VOLUME_UP,true);
+            break;
+        }
+        
+        default:
+            esp_hidd_send_consumer_value(hid_conn_id,0,false);
+            break;
+        }
+
+        
+        
         return;
     }
 
-    ESP_LOGI(HID_DEMO_TAG, "Sending All Key Strokes: %x, %x,%x, %x, %x, %x, Modifier: %x, reserved :%x", keycode2ascii[kb_report->key[0]][0],
-        keycode2ascii[kb_report->key[1]][0],keycode2ascii[kb_report->key[2]][0], keycode2ascii[kb_report->key[3]][0],
-        keycode2ascii[kb_report->key[4]][0],keycode2ascii[kb_report->key[5]][0], kb_report->modifier.val,kb_report->reserved);
+    ESP_LOGI(HID_DEMO_TAG, "Sending %d Key Strokes: %x, %x,%x, %x, %x, %x, Modifier: %x, reserved :%x",
+        length, kb_report->key[0], kb_report->key[1], kb_report->key[2], kb_report->key[3],
+        kb_report->key[4], kb_report->key[5], kb_report->modifier.val,kb_report->reserved);
+
         
     esp_hidd_send_keyboard_value(hid_conn_id, kb_report->modifier.val, kb_report->key, sizeof(kb_report->key));
 
@@ -352,11 +387,19 @@ static void hid_host_keyboard_report_callback(const uint8_t *const data, const i
 static void hid_host_generic_report_callback(const uint8_t *const data, const int length)
 {
     hid_print_new_device_report_header(HID_PROTOCOL_NONE);
-    for (int i = 0; i < length; i++)
+    
+    ESP_LOGI(TAG,"GENERIC REPORT CALLBACK");
+
+    char buffer[64];
+    memset(buffer,0,64);
+    for (size_t i = 0; i < length; i++)
     {
-        printf("%02X", data[i]);
+        sprintf(buffer + i*2, "%02X", data[i]);  // uppercase hex
     }
-    putchar('\r');
+    ESP_LOGI(HID_DEMO_TAG, "Generic Report, length: %d, hex: %s",length,buffer);
+    
+    return;
+
 }
 
 /**
