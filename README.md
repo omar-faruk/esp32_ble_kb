@@ -36,7 +36,7 @@ Short: plug a USB keyboard into the ESP device (USB-host capable board), the fir
 - [hid_usage_mouse.h](http://_vscodecontentref_/6) — HID usages for mouse (if referenced) (main/hid_usage_mouse.h)
 - [hid.h](http://_vscodecontentref_/7) — core HID definitions (main/hid.h)
 - [hidd_le_prf_int.h](http://_vscodecontentref_/8) — internal HID profile defs (main/hidd_le_prf_int.h)
-- [led_driver.c](http://_vscodecontentref_/9) / led_driver.h — LED indicators (Caps/Num) (main/led_driver.c, main/led_driver.h)
+- [led_driver.c](http://_vscodecontentref_/9) / led_driver.h — ESP32 Onboard LED indicators (not the Caps/Num) (main/led_driver.c, main/led_driver.h)
 - [CMakeLists.txt](http://_vscodecontentref_/10) (project) — build configuration (CMakeLists.txt)
 - [CMakeLists.txt](http://_vscodecontentref_/11) — main component build rules (main/CMakeLists.txt)
 
