@@ -73,6 +73,13 @@ typedef struct {
     uint8_t mac_address[6];
 }manufacturer_data;
 
+struct hid_led_report {
+    
+    uint8_t length;
+    uint8_t data[8];    //at most 8 byte
+    uint8_t report_sent;
+} keyboard_led_report;
+
 manufacturer_data device_data = {.company_id = {0xE5,0x02}, .mac_address = {0}};
 static uint8_t custom_manufacturer_data[sizeof(device_data)];
 
@@ -223,8 +230,11 @@ static void hidd_event_callback(esp_hidd_cb_event_t event, esp_hidd_cb_param_t *
     case ESP_HIDD_EVENT_BLE_LED_REPORT_WRITE_EVT:
     {
         ESP_LOGI(HID_DEMO_TAG, "ESP_HIDD_EVENT_BLE_LED_REPORT_WRITE_EVT");
-        ESP_LOG_BUFFER_HEX(HID_DEMO_TAG, param->led_write.data, param->led_write.length);
-        // esp_bt_hid_host_send_data(param->led_write.data, param->led_write.length);
+        keyboard_led_report.length = param->led_write.length;
+        keyboard_led_report.report_sent = 0;
+        memset(keyboard_led_report.data,0,8);
+        memcpy(keyboard_led_report.data,param->led_write.data,param->led_write.length);
+    
         break;
     }
     default:
@@ -445,6 +455,14 @@ void hid_host_interface_callback(hid_host_device_handle_t hid_device_handle,
         ESP_LOGE(TAG, "HID Device, protocol '%d' Unhandled event",dev_params.proto);
         break;
     }
+
+    // check if keyboard led report send is required, if required send report
+    if(!keyboard_led_report.report_sent )
+    {
+        keyboard_led_report.report_sent=0;
+        ESP_LOGI(TAG, "Sending Pending Report to keyboard len: %d",keyboard_led_report.length);
+        hid_class_request_set_report(hid_device_handle, 2, 0, keyboard_led_report.data, keyboard_led_report.length);
+    }
 }
 
 /**
@@ -474,7 +492,7 @@ void hid_host_device_event(hid_host_device_handle_t hid_device_handle,
         ESP_ERROR_CHECK(hid_host_device_open(hid_device_handle, &dev_config));
         if (HID_SUBCLASS_BOOT_INTERFACE == dev_params.sub_class)
         {
-            ESP_ERROR_CHECK(hid_class_request_set_protocol(hid_device_handle, HID_REPORT_PROTOCOL_BOOT));
+            ESP_ERROR_CHECK(hid_class_request_set_protocol(hid_device_handle, HID_REPORT_PROTOCOL_REPORT));
             if (HID_PROTOCOL_KEYBOARD == dev_params.proto)
             {
                 ESP_ERROR_CHECK(hid_class_request_set_idle(hid_device_handle, 0, 0));
