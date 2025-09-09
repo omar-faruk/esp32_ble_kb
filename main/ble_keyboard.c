@@ -141,7 +141,7 @@ static esp_ble_adv_data_t hidd_adv_data = {
     .include_txpower = true,
     .min_interval = 0x0006, // slave connection min interval, Time = min_interval * 1.25 msec
     .max_interval = 0x0010, // slave connection max interval, Time = max_interval * 1.25 msec
-    .appearance = 0x03C1,   // HID Keyboard,
+    .appearance = 0x03C0,   // HID Generic, (if used HID Keyboard, it can't implement media control)
     .manufacturer_len = sizeof(custom_manufacturer_data),
     .p_manufacturer_data = custom_manufacturer_data,
     .service_data_len = 0,
@@ -340,27 +340,15 @@ static void hid_host_keyboard_report_callback(const uint8_t *const data, const i
         }
         ESP_LOGI(TAG, "Non Boot Protocol, length is %d, hex: %s",length,buffer);
         
-        hid_special_input_t *special_report = (hid_special_input_t *)data;
-
-        switch (special_report->fn_id)
+        
+        if(data[1])
         {
-            case VOL_DOWN:
-            {
-                esp_hidd_send_consumer_value(hid_conn_id,HID_CONSUMER_VOLUME_DOWN,true);
-                break;
-            }
-            case VOL_UP:
-            {
-                esp_hidd_send_consumer_value(hid_conn_id,HID_CONSUMER_VOLUME_UP,true);
-                break;
-            }
-            
-            default:
-            {
-                ESP_LOGI(TAG, "Media Control Default, hex: %x",special_report->fn_id);
-                esp_hidd_send_consumer_value(hid_conn_id,0,false);
-                break;
-            }
+            ESP_LOGI(TAG,"Send Consumer Key Pressed: %x ",data[1]);
+            esp_hidd_send_consumer_value(hid_conn_id,(uint8_t)data[1],true);
+        }
+        else{
+            ESP_LOGI(TAG,"Send Consumer Key Released: %x ",data[1]);
+            esp_hidd_send_consumer_value(hid_conn_id,(uint8_t)data[1],false);
         }
 
         

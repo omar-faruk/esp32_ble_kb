@@ -351,35 +351,6 @@ typedef struct {
     uint8_t key[HID_KEYBOARD_KEY_MAX];
 } __attribute__((packed)) hid_keyboard_input_report_boot_t;
 
-typedef enum 
-{
-    NONE = 0x0000,
-    VOL_DOWN = 0xEA00,
-    VOL_UP = 0xE900,
-    VOL_MUTE = 0xE200,
-    CALCULTAOR = 0x9201,
-    MUSIC_PAUSE = 0xCD00,
-    MUSIC_STOP = 0xB700,
-    MUSIC_NEXT = 0xB500,
-    MUSIC_PREV = 0xB600,
-}special_control;
-
-const uint16_t special_key_map[7][2] = {
-    {VOL_UP, HID_CONSUMER_VOLUME_UP},
-    {VOL_DOWN, HID_CONSUMER_VOLUME_DOWN},
-    {VOL_MUTE, HID_CONSUMER_MUTE},
-    {MUSIC_NEXT, HID_CONSUMER_SCAN_NEXT_TRK},
-    {MUSIC_PREV, HID_CONSUMER_SCAN_PREV_TRK},
-    {MUSIC_STOP, HID_CONSUMER_STOP},
-    {MUSIC_PAUSE, HID_CONSUMER_PLAY_PAUSE},
-
-};
-
-typedef struct
-{
-    uint8_t fn_key;
-    special_control fn_id;
-} hid_special_input_t;
 
 #ifdef __cplusplus
 }
