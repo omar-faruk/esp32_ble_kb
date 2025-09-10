@@ -48,6 +48,8 @@
 
 #define HIDD_DEVICE_NAME "MK-887"
 
+// #define CONFIG_ENABLE_NETWORK_LOGGING 1 // uncomment to enable network logging
+
 #define CHAR_DECLARATION_SIZE (sizeof(uint8_t))
 
 /* GPIO Pin number for quit from example logic */
@@ -641,7 +643,9 @@ void app_main(void)
         ESP_LOGE(HID_DEMO_TAG, "%s init bluedroid failed", __func__);
     }
 
+    #ifdef CONFIG_ENABLE_NETWORK_LOGGING
     network_logging_init();
+    #endif
     // rgb_set(RED);
 
     /// register the callback function to the gap module
