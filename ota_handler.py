@@ -1,4 +1,4 @@
-
+#!/usr/bin/python3
 import asyncio
 from bleak import BleakClient,BleakScanner
 import datetime
@@ -7,7 +7,7 @@ import os
 #Advertised OTA Service UUID
 ADVERTISED_UUID  = "6f9742f3-97b2-b594-f343-74a44f52d0d2"     #OTA Service 
 
-KEYBOARD_BT_MAC = 0x782184926910          #BT Mac Address of Device
+KEYBOARD_BT_MAC = "66:BB:B3:16:1A:16"          #BT Mac Address of Device
 #characteristic uuids for ota service
 OTA_DATA_UUID    = "0000ee02-0000-1000-8000-00805f9b34fb"  #OTA Data characteristic
 OTA_CONTROL_UUID = "0000ee01-0000-1000-8000-00805f9b34fb"  #OTA Control characteristic
