@@ -61,6 +61,7 @@ static bool send_volum_up = false;
 
 
 QueueHandle_t app_event_queue = NULL;
+hid_host_device_handle_t keyboard_handle = NULL;
 
 typedef enum
 {
@@ -230,11 +231,10 @@ static void hidd_event_callback(esp_hidd_cb_event_t event, esp_hidd_cb_param_t *
     case ESP_HIDD_EVENT_BLE_LED_REPORT_WRITE_EVT:
     {
         ESP_LOGI(HID_DEMO_TAG, "ESP_HIDD_EVENT_BLE_LED_REPORT_WRITE_EVT");
-        keyboard_led_report.length = param->led_write.length;
-        keyboard_led_report.report_sent = 0;
-        memset(keyboard_led_report.data,0,8);
-        memcpy(keyboard_led_report.data,param->led_write.data,param->led_write.length);
-    
+        if(keyboard_handle)
+        {
+            hid_class_request_set_report(keyboard_handle, 2, 0, param->led_write.data, param->led_write.length);
+        }
         break;
     }
     default:
@@ -419,6 +419,9 @@ void hid_host_interface_callback(hid_host_device_handle_t hid_device_handle,
     hid_host_dev_params_t dev_params;
     ESP_ERROR_CHECK(hid_host_device_get_params(hid_device_handle, &dev_params));
 
+    if(keyboard_handle == NULL){
+        keyboard_handle = hid_device_handle; //store the keyboard device handle for later use
+    }
     switch (event)
     {
     case HID_HOST_INTERFACE_EVENT_INPUT_REPORT:
@@ -447,6 +450,7 @@ void hid_host_interface_callback(hid_host_device_handle_t hid_device_handle,
     case HID_HOST_INTERFACE_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "HID Device, protocol '%d' DISCONNECTED",dev_params.proto);
         ESP_ERROR_CHECK(hid_host_device_close(hid_device_handle));
+        keyboard_handle = NULL; //reset keyboard device handle
         break;
     case HID_HOST_INTERFACE_EVENT_TRANSFER_ERROR:
         ESP_LOGI(TAG, "HID Device, protocol '%d' TRANSFER_ERROR",dev_params.proto);
@@ -456,13 +460,6 @@ void hid_host_interface_callback(hid_host_device_handle_t hid_device_handle,
         break;
     }
 
-    // check if keyboard led report send is required, if required send report
-    if(!keyboard_led_report.report_sent )
-    {
-        keyboard_led_report.report_sent=0;
-        ESP_LOGI(TAG, "Sending Pending Report to keyboard len: %d",keyboard_led_report.length);
-        hid_class_request_set_report(hid_device_handle, 2, 0, keyboard_led_report.data, keyboard_led_report.length);
-    }
 }
 
 /**
